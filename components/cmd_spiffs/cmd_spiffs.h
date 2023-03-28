@@ -23,3 +23,17 @@ void register_spiffs(void);
 #ifdef __cplusplus
 }
 #endif
+
+
+// TODO
+
+/**
+ * Check integrity of SPIFFS
+ *
+ * @param partition_label  Same label as passed to esp_vfs_spiffs_register
+ * @return
+ *          - ESP_OK                  if successful
+ *          - ESP_ERR_INVALID_STATE   if not mounted
+ *          - ESP_FAIL                on error
+ */
+// esp_err_t esp_spiffs_check(const char* partition_label);

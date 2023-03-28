@@ -1,8 +1,8 @@
 # how to use
 
-build and flash esp32
+Build and flash ESP32. The location of spiffs partition in flash should be the same as a Duo so you should be able to just flash a Duo and look through its spiffs.
 
-# pull spiffs of esp32 with command
+# pull spiffs off of esp32 with command
 ```
 ./parttool.py -p /dev/cu.SLAB_USBtoUART read_partition --partition-name <'spiffs' or 'storage'> --output path/to/spiffs.img
 ```
