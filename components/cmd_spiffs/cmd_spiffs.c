@@ -14,11 +14,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h> 
 #include "esp_log.h"
 #include "esp_console.h"
 #include "argtable3/argtable3.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "esp_vfs.h"
 #include "esp_spiffs.h"
 #include "cmd_spiffs.h"
 
@@ -45,6 +47,21 @@ static int list_files(int argc, char **argv)
     ESP_LOGI(__func__, "Listing files");
 
     /* list all files */
+    // FILE * fp;
+    // fp = fopen("/spiffs", "r");
+    // if (fp == NULL) {
+    //     ESP_LOGE(TAG, "Failed to open /spiffs");
+    // }
+
+    DIR *d;
+    struct dirent *dir;
+    d = opendir("/spiffs");
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+        printf("%s\n", dir->d_name);
+        }
+        closedir(d);
+    }
 
     return 0;
 }
@@ -59,12 +76,33 @@ static int cat_file(int argc, char **argv)
 
     ESP_LOGI(__func__, "Cat file %s", cat_args.filename->sval[0]);
 
-
     /* Check if file exists */
+    FILE* ptr;
+    int ch;
+ 
+    char filename[64] = { "\0" };
+    sprintf(filename, "/spiffs/%s", cat_args.filename->sval[0]);
 
-
-    /* Print contents of file */
-
+    // Opening file in reading mode
+    ptr = fopen(filename, "r");
+ 
+    if (NULL == ptr) {
+        printf("file can't be opened \n");
+        return -1;
+    }
+  
+    // Printing what is written in file
+    // character by character using loop.
+    do {
+        ch = fgetc(ptr);
+        printf("%c", ch);
+ 
+        // Checking if character is not EOF.
+        // If it is EOF stop reading.
+    } while (ch != EOF);
+ 
+    // Closing the file
+    fclose(ptr);
 
     return 0;
 }
@@ -78,7 +116,7 @@ void register_spiffs(void)
       .base_path = "/spiffs",
       .partition_label = NULL,
       .max_files = 5,
-      .format_if_mount_failed = false
+      .format_if_mount_failed = true
     };
 
     // Use settings defined above to initialize and mount SPIFFS filesystem.
