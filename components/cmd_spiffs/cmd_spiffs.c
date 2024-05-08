@@ -36,6 +36,19 @@ static struct {
     struct arg_end *end;
 } cat_args;
 
+static struct {
+    struct arg_str *line;
+    struct arg_str *write_type;
+    struct arg_str *filename;
+    struct arg_end *end;
+} echo_args;
+
+typedef enum {
+	WRITE_TYPE_UNDEFINED,
+    WRITE_TYPE_OVEWRWRITE,
+    WRITE_TYPE_APPEND
+} write_type_t;
+
 static int list_files(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &list_args);
@@ -107,6 +120,66 @@ static int cat_file(int argc, char **argv)
     return 0;
 }
 
+static int echo_file(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &echo_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, echo_args.end, argv[1]);
+        return 1;
+    }
+
+    // ESP_LOGI(__func__, "line %s", echo_args.line->sval[0]);
+    // ESP_LOGI(__func__, "write_type %s", echo_args.write_type->sval[0]);
+    // ESP_LOGI(__func__, "filename %s", echo_args.filename->sval[0]);
+
+    /* Check write type */ 
+    if (echo_args.write_type->sval[0][0] != '>') {
+        ESP_LOGE(__func__, "Invalid write type. Must be '>' or '>>'.");
+        return 1;
+    }
+
+    write_type_t write_type = WRITE_TYPE_UNDEFINED;
+
+    if (echo_args.write_type->sval[0][1] == '\0') {
+        write_type = WRITE_TYPE_OVEWRWRITE;
+    } else if ((echo_args.write_type->sval[0][1] == '>') && (echo_args.write_type->sval[0][2] == '\0')) {
+        write_type = WRITE_TYPE_APPEND;
+    } else {
+        printf("Invalid write type. Must be '>' or '>>'.");
+        return 1;
+    }
+
+    /* Check if file exists */
+    FILE* ptr = NULL;
+ 
+    char filename[64] = { "\0" };
+    sprintf(filename, "/spiffs/%s", echo_args.filename->sval[0]);
+
+    // Opening file
+    if (WRITE_TYPE_OVEWRWRITE == write_type) {
+        ESP_LOGI(__func__, "Overwriting file %s", filename);
+        ptr = fopen(filename, "w+");
+    } else if (WRITE_TYPE_APPEND == write_type) {
+        ESP_LOGI(__func__, "Appending to file %s", filename);
+        ptr = fopen(filename, "a+");
+    } else {
+        printf("I shouldn't be reachable\n");
+        return 1;
+    }
+ 
+    if (NULL == ptr) {
+        printf("file can't be opened \n");
+        return -1;
+    }
+ 
+    fprintf(ptr, "%s\n", echo_args.line->sval[0]);
+
+    // Closing the file
+    fclose(ptr);
+
+    return 0;
+}
+
 void register_spiffs(void)
 {
 
@@ -147,17 +220,32 @@ void register_spiffs(void)
 
     ESP_ERROR_CHECK( esp_console_cmd_register(&list_cmd) );
 
-
     cat_args.filename = arg_str0(NULL, NULL, "<filename>", "File name");
     cat_args.end = arg_end(1);
 
     const esp_console_cmd_t cat_cmd = {
         .command = "cat",
-        .help = "Print the contects of a file",
+        .help = "Print the contents of a file",
         .hint = NULL,
         .func = &cat_file,
         .argtable = &cat_args
     };
 
     ESP_ERROR_CHECK( esp_console_cmd_register(&cat_cmd) );
+
+    echo_args.line = arg_str0(NULL, NULL, "<line>", "The line of text being written to the file");
+    echo_args.write_type = arg_str0(NULL, NULL, "<write type>", "'>>' appends, '>' overwrites");
+    echo_args.filename = arg_str0(NULL, NULL, "<filename>", "File name");
+    echo_args.end = arg_end(1);
+
+    const esp_console_cmd_t echo_cmd = {
+        .command = "echo",
+        .help = "Echo implemented to write to files.",
+        .hint = NULL,
+        .func = &echo_file,
+        .argtable = &echo_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&echo_cmd) );
+
 }
